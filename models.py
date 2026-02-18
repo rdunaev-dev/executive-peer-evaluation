@@ -1,6 +1,6 @@
 """
 Database models and operations for the Executive Peer Evaluation System.
-Uses SQLite for simplicity and portability.
+Supports SQLite (local) and PostgreSQL (production via DATABASE_URL).
 """
 
 import sqlite3
@@ -10,59 +10,120 @@ from datetime import datetime, date
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'evaluation.db')
 
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
+if DATABASE_URL.startswith('postgres://'):
+    DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+
+USE_POSTGRES = bool(DATABASE_URL)
+
+if USE_POSTGRES:
+    import psycopg2
+    import psycopg2.extras
+
+
+class DBConnection:
+    """Unified wrapper for SQLite and PostgreSQL connections."""
+
+    def __init__(self):
+        if USE_POSTGRES:
+            self._conn = psycopg2.connect(DATABASE_URL)
+        else:
+            self._conn = sqlite3.connect(DB_PATH)
+            self._conn.row_factory = sqlite3.Row
+            self._conn.execute("PRAGMA journal_mode=WAL")
+            self._conn.execute("PRAGMA foreign_keys=ON")
+
+    def execute(self, sql, params=None):
+        if USE_POSTGRES:
+            sql = sql.replace('?', '%s')
+            cur = self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            cur.execute(sql, params or ())
+            return cur
+        else:
+            return self._conn.execute(sql, params) if params else self._conn.execute(sql)
+
+    def executescript(self, sql):
+        if USE_POSTGRES:
+            cur = self._conn.cursor()
+            cur.execute(sql)
+            return cur
+        else:
+            return self._conn.executescript(sql)
+
+    def commit(self):
+        self._conn.commit()
+
+    def close(self):
+        self._conn.close()
+
 # ─────────────────────────────────────────────
 # Questions definition (methodology)
+# Based on the Head grading system (A/B/C)
+# PersonScore = D + O + X + L (range 4-12)
+# Head C = 4-6, Head B = 7-9, Head A = 10-12
 # ─────────────────────────────────────────────
+
+MAX_SCORE = 3
 
 BLOCKS = [
     {
-        "id": "block1",
-        "name": "Стратегическое мышление и принятие решений",
-        "icon": "🧠",
+        "id": "delivery",
+        "code": "D",
+        "name": "Delivery & Performance",
+        "name_ru": "Результаты",
+        "icon": "📊",
+        "description": "Насколько стабильно человек выполняет/перевыполняет KPI роли.",
         "questions": [
-            {"code": "1.1", "text": "Принимает решения, учитывая интересы компании в целом, а не только своей функции"},
-            {"code": "1.2", "text": "Действует проактивно: предвидит риски и возможности, а не только реагирует на проблемы"},
-            {"code": "1.3", "text": "Способен аргументировать свою позицию данными и менять её при появлении новой информации"},
+            {
+                "code": "D",
+                "text": "Delivery & Performance — Результаты",
+                "hint": "Оцените, насколько стабильно этот руководитель достигает и перевыполняет KPI своей роли. Есть ли системный оверперформанс или результат нестабилен?",
+            },
         ]
     },
     {
-        "id": "block2",
-        "name": "Кросс-функциональное сотрудничество",
-        "icon": "🤝",
+        "id": "ownership",
+        "code": "O",
+        "name": "Ownership & Proactivity",
+        "name_ru": "Владение и проактивность",
+        "icon": "🚀",
+        "description": "Он реагирует на задачи или сам формирует повестку, видит проблемы и решает их без пинка?",
         "questions": [
-            {"code": "2.1", "text": "Активно инициирует взаимодействие с коллегами для решения общих задач"},
-            {"code": "2.2", "text": "Готов идти на компромисс и жертвовать интересами своей функции ради общей цели"},
-            {"code": "2.3", "text": "Выполняет договорённости, достигнутые на уровне топ-команды, в полном объёме и в срок"},
+            {
+                "code": "O",
+                "text": "Ownership & Proactivity — Владение и проактивность",
+                "hint": "Оцените, формирует ли этот руководитель повестку самостоятельно, видит и решает проблемы проактивно, или в основном реагирует на внешние запросы и ждёт указаний.",
+            },
         ]
     },
     {
-        "id": "block3",
-        "name": "Лидерство и влияние",
-        "icon": "🌟",
+        "id": "crossfunc",
+        "code": "X",
+        "name": "Cross-functional Impact",
+        "name_ru": "Влияние за границами роли",
+        "icon": "🔗",
+        "description": "Его решения улучшают только «свой огород» или реально помогают другим функциям / всему бизнесу?",
         "questions": [
-            {"code": "3.1", "text": "Вдохновляет и мотивирует людей вокруг себя (не только свою команду)"},
-            {"code": "3.2", "text": "Создаёт устойчивые процессы и системы, а не замыкает всё на себе"},
-            {"code": "3.3", "text": "Открыт к обратной связи и демонстрирует готовность меняться"},
+            {
+                "code": "X",
+                "text": "Cross-functional Impact — Влияние за границами роли",
+                "hint": "Оцените, выходит ли влияние этого руководителя за рамки его функции. Улучшают ли его решения и инициативы работу других команд и бизнеса в целом, или он сфокусирован только на «своём огороде»?",
+            },
         ]
     },
     {
-        "id": "block4",
-        "name": "Управление в условиях давления",
-        "icon": "💪",
-        "questions": [
-            {"code": "4.1", "text": "Сохраняет конструктивность и ясность коммуникации в стрессовых ситуациях"},
-            {"code": "4.2", "text": "Берёт на себя ответственность за ошибки, а не перекладывает на других"},
-            {"code": "4.3", "text": "Поддерживает коллег в сложных ситуациях, а не дистанцируется"},
-        ]
-    },
-    {
-        "id": "block5",
-        "name": "Вклад в команду топ-менеджеров",
+        "id": "leadership",
+        "code": "L",
+        "name": "People & System Leadership",
+        "name_ru": "Люди и системы",
         "icon": "👥",
+        "description": "Как он строит команду, процессы, культуру в своей зоне.",
         "questions": [
-            {"code": "5.1", "text": "Привносит ценность в дискуссии топ-команды (а не отсиживается или доминирует)"},
-            {"code": "5.2", "text": "Поддерживает решения, принятые командой, даже если изначально был против"},
-            {"code": "5.3", "text": "Делится информацией и ресурсами проактивно, без необходимости просить"},
+            {
+                "code": "L",
+                "text": "People & System Leadership — Люди и системы",
+                "hint": "Оцените, как этот руководитель строит команду, процессы и культуру. Есть ли устойчивая система, или всё держится на его личном участии? Развивает ли он людей?",
+            },
         ]
     },
 ]
@@ -73,79 +134,132 @@ for block in BLOCKS:
         ALL_QUESTIONS.append(q)
 
 SCORE_LABELS = {
-    5: "Превосходно — является примером, проявляется стабильно",
-    4: "Хорошо — проявляется в большинстве ситуаций",
-    3: "Достаточно — проявляется ситуативно, есть зона для улучшения",
-    2: "Требует улучшения — проявляется редко, создаёт проблемы",
-    1: "Критично — не проявляется или проявляется противоположное",
+    3: "Сильно выше ожиданий — драйвер",
+    2: "Соответствует ожиданиям для Head",
+    1: "Ниже ожиданий / нестабильно",
 }
+
+GRADE_LABELS = {
+    "A": {"name": "Head A", "range": "10–12", "color": "emerald", "description": "Сильный драйвер: системно перевыполняет ожидания, создаёт ценность за пределами своей зоны, развивает людей и процессы, влияет на стратегию"},
+    "B": {"name": "Head B", "range": "7–9", "color": "blue", "description": "Надёжный, устойчивый Head: выполняет KPI, держит свою область, взаимодействует с другими, команда и процессы ок"},
+    "C": {"name": "Head C", "range": "4–6", "color": "amber", "description": "Работает, но: либо свеж в роли, либо нестабилен, либо сильно завязан на других, либо ещё не тянет системный уровень"},
+}
+
+def get_grade(person_score):
+    """Convert PersonScore (4-12) to grade A/B/C."""
+    if person_score >= 10:
+        return "A"
+    elif person_score >= 7:
+        return "B"
+    else:
+        return "C"
 
 
 def get_db():
     """Get database connection."""
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA foreign_keys=ON")
-    return conn
+    return DBConnection()
+
+
+SCHEMA_SQLITE = """
+    CREATE TABLE IF NOT EXISTS managers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        position TEXT NOT NULL,
+        email TEXT,
+        is_active INTEGER DEFAULT 1,
+        created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS periods (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT,
+        start_date TEXT NOT NULL,
+        end_date TEXT NOT NULL,
+        is_active INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now'))
+    );
+    CREATE TABLE IF NOT EXISTS tokens (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        period_id INTEGER NOT NULL,
+        evaluator_id INTEGER NOT NULL,
+        token TEXT NOT NULL UNIQUE,
+        is_completed INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (period_id) REFERENCES periods(id),
+        FOREIGN KEY (evaluator_id) REFERENCES managers(id)
+    );
+    CREATE TABLE IF NOT EXISTS evaluations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        token_id INTEGER NOT NULL,
+        evaluatee_id INTEGER NOT NULL,
+        is_completed INTEGER DEFAULT 0,
+        advice TEXT,
+        completed_at TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (token_id) REFERENCES tokens(id),
+        FOREIGN KEY (evaluatee_id) REFERENCES managers(id)
+    );
+    CREATE TABLE IF NOT EXISTS responses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        evaluation_id INTEGER NOT NULL,
+        question_code TEXT NOT NULL,
+        score INTEGER,
+        justification TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (evaluation_id) REFERENCES evaluations(id)
+    );
+"""
+
+SCHEMA_POSTGRES = """
+    CREATE TABLE IF NOT EXISTS managers (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        position TEXT NOT NULL,
+        email TEXT,
+        is_active INTEGER DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS periods (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        start_date TEXT NOT NULL,
+        end_date TEXT NOT NULL,
+        is_active INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS tokens (
+        id SERIAL PRIMARY KEY,
+        period_id INTEGER NOT NULL REFERENCES periods(id),
+        evaluator_id INTEGER NOT NULL REFERENCES managers(id),
+        token TEXT NOT NULL UNIQUE,
+        is_completed INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS evaluations (
+        id SERIAL PRIMARY KEY,
+        token_id INTEGER NOT NULL REFERENCES tokens(id),
+        evaluatee_id INTEGER NOT NULL REFERENCES managers(id),
+        is_completed INTEGER DEFAULT 0,
+        advice TEXT,
+        completed_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS responses (
+        id SERIAL PRIMARY KEY,
+        evaluation_id INTEGER NOT NULL REFERENCES evaluations(id),
+        question_code TEXT NOT NULL,
+        score INTEGER,
+        justification TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+"""
 
 
 def init_db():
     """Initialize database tables."""
     conn = get_db()
-    conn.executescript("""
-        CREATE TABLE IF NOT EXISTS managers (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            position TEXT NOT NULL,
-            email TEXT,
-            is_active INTEGER DEFAULT 1,
-            created_at TEXT DEFAULT (datetime('now'))
-        );
-
-        CREATE TABLE IF NOT EXISTS periods (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            description TEXT,
-            start_date TEXT NOT NULL,
-            end_date TEXT NOT NULL,
-            is_active INTEGER DEFAULT 0,
-            created_at TEXT DEFAULT (datetime('now'))
-        );
-
-        CREATE TABLE IF NOT EXISTS tokens (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            period_id INTEGER NOT NULL,
-            evaluator_id INTEGER NOT NULL,
-            token TEXT NOT NULL UNIQUE,
-            is_completed INTEGER DEFAULT 0,
-            created_at TEXT DEFAULT (datetime('now')),
-            FOREIGN KEY (period_id) REFERENCES periods(id),
-            FOREIGN KEY (evaluator_id) REFERENCES managers(id)
-        );
-
-        CREATE TABLE IF NOT EXISTS evaluations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            token_id INTEGER NOT NULL,
-            evaluatee_id INTEGER NOT NULL,
-            is_completed INTEGER DEFAULT 0,
-            advice TEXT,
-            completed_at TEXT,
-            created_at TEXT DEFAULT (datetime('now')),
-            FOREIGN KEY (token_id) REFERENCES tokens(id),
-            FOREIGN KEY (evaluatee_id) REFERENCES managers(id)
-        );
-
-        CREATE TABLE IF NOT EXISTS responses (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            evaluation_id INTEGER NOT NULL,
-            question_code TEXT NOT NULL,
-            score INTEGER,
-            justification TEXT,
-            created_at TEXT DEFAULT (datetime('now')),
-            FOREIGN KEY (evaluation_id) REFERENCES evaluations(id)
-        );
-    """)
+    conn.executescript(SCHEMA_POSTGRES if USE_POSTGRES else SCHEMA_SQLITE)
     conn.commit()
     conn.close()
 
@@ -420,7 +534,7 @@ def get_report_for_manager(period_id, manager_id):
     results = {}
     for code, data in question_data.items():
         scores = data['scores']
-        avg = round(sum(scores) / len(scores) * 2) / 2 if scores else 0  # Round to 0.5
+        avg = round(sum(scores) / len(scores), 2) if scores else 0
         results[code] = {
             "avg_score": avg,
             "min_score": min(scores) if scores else 0,
@@ -428,6 +542,11 @@ def get_report_for_manager(period_id, manager_id):
             "count": len(scores),
             "justifications": data['justifications']
         }
+
+    # Calculate PersonScore and Grade
+    total_avg = sum(r["avg_score"] for r in results.values())
+    total_avg_rounded = round(total_avg, 1)
+    grade = get_grade(total_avg_rounded)
 
     # Collect advice
     advices = [e['advice'] for e in evaluations if e['advice'] and e['advice'].strip()]
@@ -441,7 +560,9 @@ def get_report_for_manager(period_id, manager_id):
         "manager": dict(manager),
         "evaluator_count": len(evaluations),
         "questions": results,
-        "advices": advices
+        "advices": advices,
+        "person_score": total_avg_rounded,
+        "grade": grade,
     }
 
 

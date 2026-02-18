@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: executive-peer-evaluation
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ADMIN_PASSWORD
+        value: admin2026
+      - key: PYTHON_VERSION
+        value: "3.11.0"

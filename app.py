@@ -16,7 +16,7 @@ from flask import (
 import os
 from datetime import datetime, date
 from models import (
-    init_db, BLOCKS, ALL_QUESTIONS, SCORE_LABELS,
+    init_db, BLOCKS, ALL_QUESTIONS, SCORE_LABELS, MAX_SCORE, GRADE_LABELS,
     add_manager, get_managers, get_manager, update_manager, delete_manager,
     add_period, get_periods, get_period, activate_period, deactivate_period,
     get_tokens_for_period, get_token_data, get_evaluations_for_token,
@@ -25,10 +25,11 @@ from models import (
 )
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
+app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-change-me-in-prod')
 
-# Admin password (change in production)
-ADMIN_PASSWORD = "admin2026"
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin2026')
+
+init_db()
 
 
 # ─────────────────────────────────────────────
@@ -41,6 +42,8 @@ def inject_globals():
         "blocks": BLOCKS,
         "all_questions": ALL_QUESTIONS,
         "score_labels": SCORE_LABELS,
+        "max_score": MAX_SCORE,
+        "grade_labels": GRADE_LABELS,
         "now": datetime.now(),
     }
 
@@ -270,10 +273,7 @@ def evaluate_save(token, evaluation_id):
         score_val = request.form.get(f"score_{code}", "")
         justification = request.form.get(f"justification_{code}", "").strip()
 
-        if score_val and score_val != "na":
-            score = int(score_val)
-        else:
-            score = None  # N/A
+        score = int(score_val) if score_val else None
 
         scores_data.append({
             "question_code": code,
@@ -308,5 +308,4 @@ def not_found(e):
 # ─────────────────────────────────────────────
 
 if __name__ == "__main__":
-    init_db()
     app.run(debug=True, host="0.0.0.0", port=5000)
