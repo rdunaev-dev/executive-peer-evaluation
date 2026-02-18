@@ -16,13 +16,14 @@ from flask import (
 import os
 from datetime import datetime, date
 from models import (
-    init_db, BLOCKS, ALL_QUESTIONS, SCORE_LABELS, MAX_SCORE, GRADE_LABELS,
+    init_db, get_db, BLOCKS, ALL_QUESTIONS, SCORE_LABELS, MAX_SCORE, GRADE_LABELS,
     add_manager, get_managers, get_manager, update_manager, delete_manager,
     add_period, get_periods, get_period, activate_period, deactivate_period,
     get_tokens_for_period, get_token_data, get_evaluations_for_token,
     get_evaluation, save_evaluation,
     get_report_for_manager, get_period_completion_stats
 )
+from seed import auto_seed
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-change-me-in-prod')
@@ -30,6 +31,7 @@ app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-change-me-in-prod')
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin2026')
 
 init_db()
+auto_seed(get_db)
 
 
 # ─────────────────────────────────────────────
