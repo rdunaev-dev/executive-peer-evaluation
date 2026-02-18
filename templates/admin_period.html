@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}Период: {{ period.name }}{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <a href="{{ url_for('admin_dashboard') }}" class="text-sm text-brand-600 hover:text-brand-800 transition flex items-center gap-1">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        Назад к панели
+    </a>
+</div>
+
+<div class="bg-white rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-100 overflow-hidden mb-8">
+    <div class="p-6 border-b border-slate-100">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-xl font-bold text-slate-900 flex items-center gap-3">
+                    {{ period.name }}
+                    {% if period.is_active %}
+                    <span class="bg-emerald-100 text-emerald-700 text-xs font-semibold px-2.5 py-1 rounded-lg">Активен</span>
+                    {% else %}
+                    <span class="bg-slate-100 text-slate-500 text-xs font-semibold px-2.5 py-1 rounded-lg">Неактивен</span>
+                    {% endif %}
+                </h1>
+                <p class="text-sm text-slate-500 mt-1">{{ period.start_date }} — {{ period.end_date }}</p>
+                {% if period.description %}
+                <p class="text-sm text-slate-400 mt-1">{{ period.description }}</p>
+                {% endif %}
+            </div>
+            <div class="flex gap-2">
+                {% if not period.is_active %}
+                <form method="POST" action="{{ url_for('admin_activate_period', period_id=period.id) }}">
+                    <button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition"
+                            onclick="return confirm('Активировать период и сгенерировать ссылки для оценки?')">
+                        🚀 Активировать
+                    </button>
+                </form>
+                {% else %}
+                <form method="POST" action="{{ url_for('admin_deactivate_period', period_id=period.id) }}">
+                    <button type="submit" class="px-4 py-2 bg-slate-500 text-white rounded-lg text-sm font-medium hover:bg-slate-600 transition">
+                        ⏸ Деактивировать
+                    </button>
+                </form>
+                {% endif %}
+                {% if stats.completed_evaluations > 0 %}
+                <a href="{{ url_for('admin_reports', period_id=period.id) }}" class="px-4 py-2 bg-brand-600 text-white rounded-lg text-sm font-medium hover:bg-brand-700 transition">
+                    📊 Отчёты
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress -->
+    {% if stats.total_evaluations > 0 %}
+    <div class="p-6 bg-slate-50 border-b border-slate-100">
+        <div class="grid grid-cols-3 gap-6 text-center">
+            <div>
+                <div class="text-2xl font-bold text-brand-600">{{ stats.completed_evaluations }} / {{ stats.total_evaluations }}</div>
+                <div class="text-xs text-slate-500 mt-1">Оценок заполнено</div>
+            </div>
+            <div>
+                <div class="text-2xl font-bold text-indigo-600">{{ stats.completed_tokens }} / {{ stats.total_tokens }}</div>
+                <div class="text-xs text-slate-500 mt-1">Оценщиков завершили полностью</div>
+            </div>
+            <div>
+                <div class="text-2xl font-bold text-emerald-600">{{ stats.percent }}%</div>
+                <div class="text-xs text-slate-500 mt-1">Общий прогресс</div>
+            </div>
+        </div>
+        <div class="mt-4 w-full bg-slate-200 rounded-full h-3">
+            <div class="bg-gradient-to-r from-brand-500 to-indigo-500 h-3 rounded-full transition-all duration-500"
+                 style="width: {{ stats.percent }}%"></div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Tokens / Links -->
+{% if tokens %}
+<div class="bg-white rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-100 overflow-hidden">
+    <div class="p-6 border-b border-slate-100">
+        <h2 class="text-lg font-bold text-slate-900">Персональные ссылки для оценки</h2>
+        <p class="text-sm text-slate-500 mt-1">Отправьте каждому руководителю его персональную ссылку. Ссылка анонимна — в ней нет имени оценщика.</p>
+    </div>
+    <div class="divide-y divide-slate-100">
+        {% for t in tokens %}
+        <div class="p-4 flex items-center justify-between hover:bg-slate-50 transition">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold
+                    {% if t.is_completed %}bg-emerald-100 text-emerald-700{% else %}bg-slate-100 text-slate-500{% endif %}">
+                    {% if t.is_completed %}✓{% else %}{{ t.completed_count }}/{{ t.total_count }}{% endif %}
+                </div>
+                <div>
+                    <div class="font-semibold text-sm text-slate-900">{{ t.evaluator_name }}</div>
+                    <div class="text-xs text-slate-500">{{ t.evaluator_position }}</div>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                {% if t.is_completed %}
+                <span class="text-xs bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-lg font-medium">Завершено</span>
+                {% else %}
+                <span class="text-xs bg-amber-100 text-amber-700 px-2.5 py-1 rounded-lg font-medium">{{ t.completed_count }} из {{ t.total_count }}</span>
+                {% endif %}
+                <div class="flex items-center gap-1">
+                    <input type="text" value="{{ request.host_url }}evaluate/{{ t.token }}" readonly
+                           class="w-64 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-600 font-mono"
+                           id="link-{{ t.id }}">
+                    <button onclick="copyLink('link-{{ t.id }}')" class="px-3 py-1.5 bg-brand-50 text-brand-700 rounded-lg text-xs font-medium hover:bg-brand-100 transition" title="Копировать">
+                        📋
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% else %}
+<div class="bg-white rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-100 p-12 text-center">
+    <div class="text-4xl mb-4">🔗</div>
+    <h3 class="text-lg font-bold text-slate-900 mb-2">Ссылки ещё не сгенерированы</h3>
+    <p class="text-sm text-slate-500 mb-6">Активируйте период, чтобы сгенерировать персональные ссылки для каждого руководителя</p>
+    {% if not period.is_active %}
+    <form method="POST" action="{{ url_for('admin_activate_period', period_id=period.id) }}">
+        <button type="submit" class="px-6 py-3 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition shadow-lg shadow-emerald-500/25"
+                onclick="return confirm('Активировать период?')">
+            🚀 Активировать период
+        </button>
+    </form>
+    {% endif %}
+</div>
+{% endif %}
+
+<script>
+function copyLink(elementId) {
+    const input = document.getElementById(elementId);
+    input.select();
+    navigator.clipboard.writeText(input.value);
+
+    const btn = input.nextElementSibling;
+    const orig = btn.textContent;
+    btn.textContent = '✓';
+    setTimeout(() => btn.textContent = orig, 1500);
+}
+</script>
+{% endblock %}

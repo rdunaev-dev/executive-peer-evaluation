@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Оценка коллег — {{ token_data.period_name }}{% endblock %}
+
+{% block body %}
+<div class="min-h-full">
+    <!-- Simplified navigation for evaluators (no admin links) -->
+    <nav class="glass border-b border-white/20 sticky top-0 z-50">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-brand-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-brand-500/25">
+                        <svg class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                    </div>
+                    <span class="text-lg font-bold text-brand-900">Оценка коллег</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+        {% for category, message in messages %}
+        <div class="mb-2 p-4 rounded-xl border fade-in
+            {% if category == 'success' %}bg-emerald-50 border-emerald-200 text-emerald-800
+            {% elif category == 'error' %}bg-red-50 border-red-200 text-red-800
+            {% else %}bg-blue-50 border-blue-200 text-blue-800{% endif %}">
+            <div class="flex items-center gap-2">
+                {% if category == 'success' %}
+                <svg class="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                {% endif %}
+                <span class="text-sm font-medium">{{ message }}</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-2xl font-bold text-slate-900">{{ token_data.period_name }}</h1>
+            <p class="text-slate-500 mt-1">{{ token_data.period_description or '' }}</p>
+            <p class="text-sm text-slate-400 mt-2">Период оценки: {{ token_data.start_date }} — {{ token_data.end_date }}</p>
+        </div>
+
+        <!-- Instructions -->
+        <div class="bg-gradient-to-r from-brand-50 to-indigo-50 border border-brand-100 rounded-2xl p-6 mb-8">
+            <h3 class="font-bold text-brand-900 mb-2 flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Как проходит оценка
+            </h3>
+            <ul class="text-sm text-brand-800 space-y-1">
+                <li>• Оцените каждого коллегу по 15 вопросам (5 блоков по 3 вопроса)</li>
+                <li>• К каждой оценке обязательно укажите обоснование — <strong>почему</strong> вы поставили именно этот балл</li>
+                <li>• Вы можете <strong>наговаривать ответы голосом</strong> 🎤 — нажмите на иконку микрофона рядом с полем</li>
+                <li>• Ваши оценки <strong>полностью анонимны</strong> — никто не увидит, кто какой балл поставил</li>
+                <li>• Вы можете оценивать коллег в любом порядке и в несколько заходов</li>
+            </ul>
+        </div>
+
+        <!-- Colleagues list -->
+        <div class="space-y-3">
+            {% set completed_count = evaluations | selectattr('is_completed', 'equalto', 1) | list | length %}
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-bold text-slate-900">Ваши коллеги</h2>
+                <span class="text-sm text-slate-500">Заполнено: {{ completed_count }} из {{ evaluations|length }}</span>
+            </div>
+
+            <!-- Progress bar -->
+            <div class="w-full bg-slate-100 rounded-full h-2 mb-6">
+                <div class="bg-gradient-to-r from-brand-500 to-emerald-500 h-2 rounded-full transition-all duration-500"
+                     style="width: {{ (completed_count / evaluations|length * 100) if evaluations|length > 0 else 0 }}%"></div>
+            </div>
+
+            {% for e in evaluations %}
+            <a href="{{ url_for('evaluate_form', token=token, evaluation_id=e.id) }}"
+               class="block bg-white rounded-xl shadow-md shadow-slate-200/50 border border-slate-100 p-5 hover:shadow-lg hover:border-brand-200 transition group">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold
+                            {% if e.is_completed %}bg-emerald-100 text-emerald-700{% else %}bg-brand-50 text-brand-600{% endif %}">
+                            {% if e.is_completed %}✓{% else %}{{ e.evaluatee_name[0] }}{% endif %}
+                        </div>
+                        <div>
+                            <div class="font-semibold text-slate-900 group-hover:text-brand-700 transition">{{ e.evaluatee_name }}</div>
+                            <div class="text-sm text-slate-500">{{ e.evaluatee_position }}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        {% if e.is_completed %}
+                        <span class="text-xs bg-emerald-100 text-emerald-700 px-3 py-1 rounded-lg font-medium">Заполнено</span>
+                        {% else %}
+                        <span class="text-xs bg-brand-50 text-brand-700 px-3 py-1 rounded-lg font-medium">Оценить →</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+
+        {% if completed_count == evaluations|length and evaluations|length > 0 %}
+        <div class="mt-8 bg-emerald-50 border border-emerald-200 rounded-2xl p-8 text-center">
+            <div class="text-4xl mb-3">🎉</div>
+            <h3 class="text-lg font-bold text-emerald-900">Все оценки заполнены!</h3>
+            <p class="text-sm text-emerald-700 mt-2">Спасибо за вашу обратную связь. Она поможет команде стать сильнее.</p>
+        </div>
+        {% endif %}
+    </main>
+</div>
+{% endblock %}

@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}Отчёт: {{ manager.name }}{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <a href="{{ url_for('admin_reports', period_id=period.id) }}" class="text-sm text-brand-600 hover:text-brand-800 transition flex items-center gap-1">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        Назад к списку отчётов
+    </a>
+</div>
+
+{% if not report %}
+<div class="bg-white rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-100 p-12 text-center">
+    <div class="text-4xl mb-4">📭</div>
+    <h3 class="text-lg font-bold text-slate-900 mb-2">Нет данных</h3>
+    <p class="text-sm text-slate-500">Для этого руководителя ещё нет заполненных оценок в данном периоде</p>
+</div>
+{% else %}
+
+<!-- Header -->
+<div class="bg-white rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-100 p-6 mb-6">
+    <div class="flex items-center gap-4 mb-4">
+        <div class="w-16 h-16 bg-gradient-to-br from-brand-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-lg shadow-brand-500/25">
+            {{ manager.name[0] }}
+        </div>
+        <div>
+            <h1 class="text-xl font-bold text-slate-900">{{ manager.name }}</h1>
+            <div class="text-sm text-slate-500">{{ manager.position }}</div>
+            <div class="text-xs text-slate-400 mt-1">{{ period.name }} · Оценщиков: {{ report.evaluator_count }}</div>
+        </div>
+    </div>
+
+    <!-- Overall scores by block -->
+    <div class="grid grid-cols-5 gap-3 mt-6">
+        {% for block in blocks %}
+        {% set block_scores = [] %}
+        {% for q in block.questions %}
+            {% if q.code in report.questions and report.questions[q.code].avg_score > 0 %}
+                {% if block_scores.append(report.questions[q.code].avg_score) %}{% endif %}
+            {% endif %}
+        {% endfor %}
+        {% set block_avg = (block_scores | sum / block_scores | length) if block_scores | length > 0 else 0 %}
+        <div class="text-center p-3 rounded-xl bg-slate-50">
+            <div class="text-2xl mb-1">{{ block.icon }}</div>
+            <div class="text-xl font-bold {% if block_avg >= 4 %}text-emerald-600{% elif block_avg >= 3 %}text-amber-600{% else %}text-red-600{% endif %}">
+                {{ "%.1f"|format(block_avg) }}
+            </div>
+            <div class="text-xs text-slate-500 mt-1 leading-tight">{{ block.name | truncate(30) }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Detailed results by block -->
+{% for block in blocks %}
+<div class="bg-white rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-100 overflow-hidden mb-6">
+    <div class="p-5 border-b border-slate-100 bg-slate-50">
+        <h2 class="text-base font-bold text-slate-900">{{ block.icon }} {{ block.name }}</h2>
+    </div>
+
+    {% for q in block.questions %}
+    {% set qdata = report.questions.get(q.code, {}) %}
+    <div class="p-5 {% if not loop.last %}border-b border-slate-50{% endif %}">
+        <div class="flex items-start justify-between mb-3">
+            <div class="flex-1">
+                <div class="text-sm font-medium text-slate-900">
+                    <span class="text-slate-400 font-mono text-xs mr-2">{{ q.code }}</span>
+                    {{ q.text }}
+                </div>
+            </div>
+            <div class="ml-4 text-right flex-shrink-0">
+                {% if qdata and qdata.avg_score > 0 %}
+                <div class="text-lg font-bold {% if qdata.avg_score >= 4 %}text-emerald-600{% elif qdata.avg_score >= 3 %}text-amber-600{% else %}text-red-600{% endif %}">
+                    {{ qdata.avg_score }}
+                </div>
+                <div class="text-xs text-slate-400">{{ qdata.min_score }}—{{ qdata.max_score }} (n={{ qdata.count }})</div>
+                {% else %}
+                <div class="text-sm text-slate-300">N/A</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Score bar -->
+        {% if qdata and qdata.avg_score > 0 %}
+        <div class="w-full bg-slate-100 rounded-full h-2 mb-3">
+            <div class="h-2 rounded-full transition-all duration-500
+                {% if qdata.avg_score >= 4 %}bg-emerald-500{% elif qdata.avg_score >= 3 %}bg-amber-500{% else %}bg-red-500{% endif %}"
+                 style="width: {{ qdata.avg_score / 5 * 100 }}%"></div>
+        </div>
+        {% endif %}
+
+        <!-- Justifications -->
+        {% if qdata and qdata.justifications %}
+        <div class="space-y-2 mt-3">
+            {% for j in qdata.justifications %}
+            <div class="flex items-start gap-2 p-3 bg-slate-50 rounded-lg">
+                <svg class="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                </svg>
+                <p class="text-sm text-slate-700 leading-relaxed">{{ j }}</p>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endfor %}
+
+<!-- Advices -->
+{% if report.advices %}
+<div class="bg-white rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-100 overflow-hidden mb-6">
+    <div class="p-5 border-b border-slate-100 bg-amber-50">
+        <h2 class="text-base font-bold text-slate-900">💬 Советы коллег на следующий период</h2>
+    </div>
+    <div class="p-5 space-y-3">
+        {% for a in report.advices %}
+        <div class="flex items-start gap-3 p-4 bg-slate-50 rounded-xl">
+            <div class="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center text-amber-600 flex-shrink-0 text-sm font-bold">
+                {{ loop.index }}
+            </div>
+            <p class="text-sm text-slate-700 leading-relaxed">{{ a }}</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% endif %}
+{% endblock %}

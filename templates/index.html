@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Система оценки топ-менеджеров{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto text-center py-16">
+    <div class="mb-8">
+        <div class="w-24 h-24 bg-gradient-to-br from-brand-500 to-indigo-600 rounded-3xl flex items-center justify-center mx-auto shadow-2xl shadow-brand-500/30 mb-8">
+            <svg class="w-14 h-14 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+            </svg>
+        </div>
+        <h1 class="text-4xl font-extrabold text-brand-900 mb-4">
+            Перекрёстная оценка<br>топ-менеджеров
+        </h1>
+        <p class="text-lg text-slate-600 max-w-xl mx-auto leading-relaxed">
+            Анонимная система оценки, помогающая топ-команде развиваться через честную обратную связь.
+            Поддержка голосового ввода — говорите вместо того, чтобы печатать.
+        </p>
+    </div>
+
+    <div class="flex flex-col sm:flex-row gap-4 justify-center items-center mt-10">
+        <div class="bg-white rounded-2xl shadow-xl shadow-slate-200/50 p-8 max-w-sm w-full border border-slate-100">
+            <div class="w-14 h-14 bg-brand-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <svg class="w-7 h-7 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                </svg>
+            </div>
+            <h3 class="text-lg font-bold text-slate-900 mb-2">Пройти оценку</h3>
+            <p class="text-sm text-slate-500 mb-6">Если у вас есть персональная ссылка для оценки — перейдите по ней</p>
+            <div class="flex items-center gap-2">
+                <input type="text" id="tokenInput" placeholder="Вставьте вашу ссылку"
+                       class="flex-1 px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition">
+                <button onclick="goToToken()" class="px-4 py-2.5 bg-brand-600 text-white rounded-xl text-sm font-medium hover:bg-brand-700 transition shadow-lg shadow-brand-500/25">
+                    Перейти
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-xl shadow-slate-200/50 p-8 max-w-sm w-full border border-slate-100">
+            <div class="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <svg class="w-7 h-7 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+            </div>
+            <h3 class="text-lg font-bold text-slate-900 mb-2">Администратор</h3>
+            <p class="text-sm text-slate-500 mb-6">Управление руководителями, периодами оценки и просмотр отчётов</p>
+            <a href="{{ url_for('admin_login') }}" class="block w-full px-4 py-2.5 bg-slate-800 text-white rounded-xl text-sm font-medium hover:bg-slate-900 transition text-center shadow-lg shadow-slate-800/25">
+                Войти в панель
+            </a>
+        </div>
+    </div>
+
+    <div class="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-6 text-left">
+        <div class="flex items-start gap-3">
+            <div class="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                </svg>
+            </div>
+            <div>
+                <h4 class="text-sm font-semibold text-slate-900">Полная анонимность</h4>
+                <p class="text-xs text-slate-500 mt-1">Ваши оценки не могут быть привязаны к вам лично</p>
+            </div>
+        </div>
+        <div class="flex items-start gap-3">
+            <div class="w-10 h-10 bg-violet-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+                </svg>
+            </div>
+            <div>
+                <h4 class="text-sm font-semibold text-slate-900">Голосовой ввод</h4>
+                <p class="text-xs text-slate-500 mt-1">Наговаривайте ответы — система распознает вашу речь</p>
+            </div>
+        </div>
+        <div class="flex items-start gap-3">
+            <div class="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+            </div>
+            <div>
+                <h4 class="text-sm font-semibold text-slate-900">Аналитика</h4>
+                <p class="text-xs text-slate-500 mt-1">Агрегированные отчёты с динамикой по кварталам</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function goToToken() {
+    let input = document.getElementById('tokenInput').value.trim();
+    if (input.includes('/evaluate/')) {
+        window.location.href = input;
+    } else if (input) {
+        window.location.href = '/evaluate/' + input;
+    }
+}
+document.getElementById('tokenInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') goToToken();
+});
+</script>
+{% endblock %}

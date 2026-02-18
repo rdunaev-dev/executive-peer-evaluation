@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Период оценки закрыт{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto text-center py-20">
+    <div class="text-6xl mb-6">⏸</div>
+    <h1 class="text-2xl font-bold text-slate-900 mb-3">Период оценки закрыт</h1>
+    <p class="text-slate-500 mb-2">Период «{{ token_data.period_name }}» в данный момент неактивен.</p>
+    <p class="text-sm text-slate-400">Обратитесь к администратору, если считаете, что это ошибка.</p>
+</div>
+{% endblock %}

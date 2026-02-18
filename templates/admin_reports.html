@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Отчёты: {{ period.name }}{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <a href="{{ url_for('admin_dashboard') }}" class="text-sm text-brand-600 hover:text-brand-800 transition flex items-center gap-1">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        Назад к панели
+    </a>
+</div>
+
+<div class="mb-8">
+    <h1 class="text-2xl font-bold text-slate-900">📊 Отчёты: {{ period.name }}</h1>
+    <p class="text-slate-500 mt-1">{{ period.start_date }} — {{ period.end_date }} · Заполнено {{ stats.completed_evaluations }} из {{ stats.total_evaluations }} оценок ({{ stats.percent }}%)</p>
+</div>
+
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    {% for m in managers %}
+    <a href="{{ url_for('admin_report_detail', period_id=period.id, manager_id=m.id) }}"
+       class="bg-white rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-100 p-6 hover:shadow-xl hover:border-brand-200 transition group">
+        <div class="flex items-center gap-4 mb-4">
+            <div class="w-12 h-12 bg-gradient-to-br from-brand-500 to-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-brand-500/25">
+                {{ m.name[0] }}
+            </div>
+            <div>
+                <div class="font-bold text-slate-900 group-hover:text-brand-700 transition">{{ m.name }}</div>
+                <div class="text-xs text-slate-500">{{ m.position }}</div>
+            </div>
+        </div>
+        <div class="flex items-center justify-between">
+            <span class="text-xs text-slate-400">Смотреть отчёт →</span>
+            <svg class="w-5 h-5 text-slate-300 group-hover:text-brand-500 transition transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% endblock %}

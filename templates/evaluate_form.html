@@ -1,0 +1,393 @@
+{% extends "base.html" %}
+{% block title %}Оценка: {{ evaluation.evaluatee_name }}{% endblock %}
+
+{% block body %}
+<div class="min-h-full">
+    <!-- Nav -->
+    <nav class="glass border-b border-white/20 sticky top-0 z-50">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <a href="{{ url_for('evaluate_index', token=token) }}" class="text-brand-600 hover:text-brand-800 transition">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    </a>
+                    <span class="text-lg font-bold text-brand-900">Оценка: {{ evaluation.evaluatee_name }}</span>
+                </div>
+                <div class="flex items-center">
+                    <span class="text-xs text-slate-500 bg-slate-100 px-3 py-1 rounded-lg">{{ evaluation.evaluatee_position }}</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Voice support notice -->
+        <div id="voiceNotice" class="bg-violet-50 border border-violet-200 rounded-xl p-4 mb-6 flex items-center gap-3">
+            <div class="w-10 h-10 bg-violet-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-violet-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+                </svg>
+            </div>
+            <div>
+                <div class="text-sm font-semibold text-violet-900">Голосовой ввод доступен 🎤</div>
+                <div class="text-xs text-violet-700 mt-0.5">Нажмите на иконку микрофона рядом с любым текстовым полем, чтобы наговорить ответ. Работает в Chrome и Edge.</div>
+            </div>
+            <button onclick="this.parentElement.remove()" class="text-violet-400 hover:text-violet-600 ml-auto flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+
+        <form id="evalForm" method="POST" action="{{ url_for('evaluate_save', token=token, evaluation_id=evaluation.id) }}">
+            {% for block in blocks %}
+            <!-- Block {{ block.id }} -->
+            <div class="bg-white rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-100 overflow-hidden mb-6 fade-in">
+                <div class="p-5 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-brand-50/30">
+                    <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                        <span class="text-xl">{{ block.icon }}</span>
+                        {{ block.name }}
+                    </h2>
+                </div>
+
+                {% for q in block.questions %}
+                <div class="p-5 {% if not loop.last %}border-b border-slate-50{% endif %}" id="question-{{ q.code | replace('.', '-') }}">
+                    <!-- Question text -->
+                    <div class="mb-4">
+                        <div class="text-sm font-medium text-slate-900 leading-relaxed">
+                            <span class="inline-block bg-slate-100 text-slate-500 font-mono text-xs px-2 py-0.5 rounded mr-2">{{ q.code }}</span>
+                            {{ q.text }}
+                        </div>
+                    </div>
+
+                    <!-- Score selection -->
+                    <div class="mb-4">
+                        <div class="text-xs text-slate-500 mb-2 font-medium">Оценка:</div>
+                        <div class="flex flex-wrap gap-2">
+                            {% for score in [1, 2, 3, 4, 5] %}
+                            <div>
+                                <input type="radio" name="score_{{ q.code }}" value="{{ score }}"
+                                       id="score_{{ q.code | replace('.', '_') }}_{{ score }}"
+                                       class="score-radio hidden peer"
+                                       required
+                                       onchange="onScoreChange('{{ q.code }}', {{ score }})">
+                                <label for="score_{{ q.code | replace('.', '_') }}_{{ score }}"
+                                       class="score-{{ score }} cursor-pointer inline-flex items-center gap-2 px-3 py-2 border-2 border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:border-slate-300 transition select-none"
+                                       title="{{ score_labels[score] }}">
+                                    <span class="text-lg font-bold">{{ score }}</span>
+                                    <span class="hidden sm:inline text-xs">
+                                        {% if score == 1 %}Критично{% elif score == 2 %}Слабо{% elif score == 3 %}Достаточно{% elif score == 4 %}Хорошо{% elif score == 5 %}Отлично{% endif %}
+                                    </span>
+                                </label>
+                            </div>
+                            {% endfor %}
+                            <div>
+                                <input type="radio" name="score_{{ q.code }}" value="na"
+                                       id="score_{{ q.code | replace('.', '_') }}_na"
+                                       class="score-radio hidden peer"
+                                       onchange="onScoreChange('{{ q.code }}', 'na')">
+                                <label for="score_{{ q.code | replace('.', '_') }}_na"
+                                       class="cursor-pointer inline-flex items-center px-3 py-2 border-2 border-slate-200 rounded-xl text-sm font-medium text-slate-400 hover:border-slate-300 transition select-none">
+                                    N/A
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Score description hint -->
+                    <div id="hint_{{ q.code | replace('.', '-') }}" class="hidden mb-3 text-xs text-slate-500 bg-slate-50 rounded-lg p-2">
+                    </div>
+
+                    <!-- Justification with voice input -->
+                    <div id="justification_block_{{ q.code | replace('.', '-') }}" class="mt-3">
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="text-xs text-slate-500 font-medium">
+                                Почему вы поставили эту оценку? <span class="text-red-400">*</span>
+                            </label>
+                            <span id="charcount_{{ q.code | replace('.', '-') }}" class="text-xs text-slate-400">0 / мин. 50</span>
+                        </div>
+                        <div class="relative">
+                            <textarea name="justification_{{ q.code }}"
+                                      id="text_{{ q.code | replace('.', '-') }}"
+                                      rows="3"
+                                      placeholder="Приведите конкретный пример или ситуацию за оцениваемый период, которая иллюстрирует ваш выбор..."
+                                      class="w-full px-4 py-3 pr-14 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition resize-none leading-relaxed"
+                                      oninput="updateCharCount('{{ q.code }}')"
+                                      ></textarea>
+                            <!-- Voice button -->
+                            <button type="button"
+                                    onclick="toggleVoice('{{ q.code }}')"
+                                    id="voicebtn_{{ q.code | replace('.', '-') }}"
+                                    class="voice-btn absolute right-3 top-3 w-9 h-9 rounded-lg bg-slate-100 hover:bg-violet-100 text-slate-400 hover:text-violet-600 flex items-center justify-center transition"
+                                    title="Наговорить ответ">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+                                </svg>
+                            </button>
+                            <!-- Recording indicator -->
+                            <div id="recording_{{ q.code | replace('.', '-') }}" class="hidden absolute right-14 top-3 flex items-center gap-1.5">
+                                <div class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                                <span class="text-xs text-red-500 font-medium">Запись...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+
+            <!-- Final advice -->
+            <div class="bg-white rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-100 overflow-hidden mb-6">
+                <div class="p-5 border-b border-slate-100 bg-gradient-to-r from-amber-50 to-orange-50">
+                    <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                        <span class="text-xl">💬</span>
+                        Совет коллеге
+                    </h2>
+                </div>
+                <div class="p-5">
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="text-sm text-slate-700 font-medium">Если бы вы могли дать один совет {{ evaluation.evaluatee_name }} на следующий период — какой?</label>
+                    </div>
+                    <div class="relative">
+                        <textarea name="advice" id="text_advice" rows="3"
+                                  placeholder="Ваш совет..."
+                                  class="w-full px-4 py-3 pr-14 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition resize-none leading-relaxed"></textarea>
+                        <button type="button"
+                                onclick="toggleVoice('advice')"
+                                id="voicebtn_advice"
+                                class="voice-btn absolute right-3 top-3 w-9 h-9 rounded-lg bg-slate-100 hover:bg-violet-100 text-slate-400 hover:text-violet-600 flex items-center justify-center transition"
+                                title="Наговорить ответ">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+                            </svg>
+                        </button>
+                        <div id="recording_advice" class="hidden absolute right-14 top-3 flex items-center gap-1.5">
+                            <div class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                            <span class="text-xs text-red-500 font-medium">Запись...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit -->
+            <div class="flex items-center justify-between bg-white rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-100 p-6">
+                <a href="{{ url_for('evaluate_index', token=token) }}" class="text-sm text-slate-500 hover:text-slate-700 transition">
+                    ← Вернуться к списку
+                </a>
+                <button type="submit" id="submitBtn"
+                        class="px-8 py-3 bg-gradient-to-r from-brand-600 to-indigo-600 text-white rounded-xl text-sm font-semibold hover:from-brand-700 hover:to-indigo-700 transition shadow-lg shadow-brand-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
+                        onclick="return validateForm()">
+                    Сохранить оценку ✓
+                </button>
+            </div>
+        </form>
+    </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ─────────────────────────────────────────────
+// Score labels and hints
+// ─────────────────────────────────────────────
+const scoreLabels = {
+    1: "Критично — не проявляется или проявляется противоположное поведение",
+    2: "Требует улучшения — проявляется редко, создаёт проблемы",
+    3: "Достаточно — проявляется ситуативно, есть зона для улучшения",
+    4: "Хорошо — проявляется в большинстве ситуаций",
+    5: "Превосходно — является примером, проявляется стабильно"
+};
+
+function onScoreChange(code, score) {
+    const safeCode = code.replace(/\./g, '-');
+    const hint = document.getElementById('hint_' + safeCode);
+    if (score !== 'na' && scoreLabels[score]) {
+        hint.textContent = '📌 ' + scoreLabels[score];
+        hint.classList.remove('hidden');
+    } else {
+        hint.classList.add('hidden');
+    }
+}
+
+function updateCharCount(code) {
+    const safeCode = code.replace(/\./g, '-');
+    const text = document.getElementById('text_' + safeCode);
+    const counter = document.getElementById('charcount_' + safeCode);
+    if (text && counter) {
+        const len = text.value.length;
+        counter.textContent = len + ' / мин. 50';
+        if (len >= 50) {
+            counter.classList.remove('text-red-400');
+            counter.classList.add('text-emerald-500');
+        } else {
+            counter.classList.remove('text-emerald-500');
+            counter.classList.add('text-red-400');
+        }
+    }
+}
+
+// ─────────────────────────────────────────────
+// Voice Input (Web Speech API)
+// ─────────────────────────────────────────────
+let activeRecognition = null;
+let activeField = null;
+
+function toggleVoice(code) {
+    const safeCode = code.replace(/\./g, '-');
+    const btn = document.getElementById('voicebtn_' + safeCode);
+    const indicator = document.getElementById('recording_' + safeCode);
+    const textarea = document.getElementById('text_' + safeCode);
+
+    // If already recording this field, stop
+    if (activeField === code && activeRecognition) {
+        activeRecognition.stop();
+        return;
+    }
+
+    // If recording another field, stop that first
+    if (activeRecognition) {
+        activeRecognition.stop();
+    }
+
+    // Check browser support
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        alert('Голосовой ввод не поддерживается вашим браузером. Используйте Chrome или Edge.');
+        return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'ru-RU';
+    recognition.interimResults = true;
+    recognition.continuous = true;
+    recognition.maxAlternatives = 1;
+
+    let finalTranscript = textarea.value;
+    if (finalTranscript && !finalTranscript.endsWith(' ') && !finalTranscript.endsWith('\n')) {
+        finalTranscript += ' ';
+    }
+
+    recognition.onstart = function() {
+        activeField = code;
+        activeRecognition = recognition;
+        btn.classList.add('recording', 'bg-red-100', 'text-red-600');
+        btn.classList.remove('bg-slate-100', 'text-slate-400');
+        indicator.classList.remove('hidden');
+        textarea.focus();
+    };
+
+    recognition.onresult = function(event) {
+        let interimTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+                finalTranscript += transcript;
+            } else {
+                interimTranscript += transcript;
+            }
+        }
+        textarea.value = finalTranscript + interimTranscript;
+        updateCharCount(code);
+    };
+
+    recognition.onend = function() {
+        btn.classList.remove('recording', 'bg-red-100', 'text-red-600');
+        btn.classList.add('bg-slate-100', 'text-slate-400');
+        indicator.classList.add('hidden');
+        textarea.value = finalTranscript;
+        updateCharCount(code);
+
+        if (activeField === code) {
+            activeField = null;
+            activeRecognition = null;
+        }
+    };
+
+    recognition.onerror = function(event) {
+        console.error('Speech recognition error:', event.error);
+        btn.classList.remove('recording', 'bg-red-100', 'text-red-600');
+        btn.classList.add('bg-slate-100', 'text-slate-400');
+        indicator.classList.add('hidden');
+        activeField = null;
+        activeRecognition = null;
+
+        if (event.error === 'not-allowed') {
+            alert('Доступ к микрофону запрещён. Разрешите доступ к микрофону в настройках браузера.');
+        }
+    };
+
+    recognition.start();
+}
+
+// ─────────────────────────────────────────────
+// Form Validation
+// ─────────────────────────────────────────────
+function validateForm() {
+    const questions = {{ all_questions | tojson }};
+    let errors = [];
+
+    for (const q of questions) {
+        const code = q.code;
+        const scoreInputs = document.querySelectorAll('input[name="score_' + code + '"]');
+        let scoreSelected = false;
+        let selectedValue = null;
+
+        scoreInputs.forEach(input => {
+            if (input.checked) {
+                scoreSelected = true;
+                selectedValue = input.value;
+            }
+        });
+
+        if (!scoreSelected) {
+            errors.push('Вопрос ' + code + ': выберите оценку');
+            continue;
+        }
+
+        // If score is not N/A, require justification
+        if (selectedValue !== 'na') {
+            const safeCode = code.replace(/\./g, '-');
+            const textarea = document.getElementById('text_' + safeCode);
+            if (!textarea || textarea.value.trim().length < 50) {
+                errors.push('Вопрос ' + code + ': обоснование должно содержать минимум 50 символов (сейчас: ' + (textarea ? textarea.value.trim().length : 0) + ')');
+            }
+        }
+    }
+
+    if (errors.length > 0) {
+        alert('Пожалуйста, исправьте следующие ошибки:\n\n' + errors.join('\n'));
+
+        // Scroll to first error
+        const firstErrorCode = errors[0].match(/\d+\.\d+/);
+        if (firstErrorCode) {
+            const el = document.getElementById('question-' + firstErrorCode[0].replace('.', '-'));
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        return false;
+    }
+    return true;
+}
+
+// ─────────────────────────────────────────────
+// Check voice support on load
+// ─────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        document.getElementById('voiceNotice').innerHTML = `
+            <div class="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                </svg>
+            </div>
+            <div>
+                <div class="text-sm font-semibold text-amber-900">Голосовой ввод недоступен</div>
+                <div class="text-xs text-amber-700 mt-0.5">Ваш браузер не поддерживает Web Speech API. Используйте Chrome или Edge для голосового ввода. Вы можете вводить текст вручную.</div>
+            </div>
+        `;
+        document.getElementById('voiceNotice').className = 'bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 flex items-center gap-3';
+
+        // Hide all voice buttons
+        document.querySelectorAll('.voice-btn').forEach(btn => btn.style.display = 'none');
+    }
+});
+</script>
+{% endblock %}
