@@ -124,7 +124,7 @@
                     {% else %}text-red-600{% endif %}">
                     {{ "%.1f"|format(qdata.avg_score) }}
                 </span>
-                <span class="text-xs text-slate-400">({{ qdata.min_score }}–{{ qdata.max_score }}, n={{ qdata.count }})</span>
+                <span class="text-xs text-slate-400">({{ qdata.min_score }}–{{ qdata.max_score }}, n={{ qdata.count }}{% if qdata.na_count %}, Н/И={{ qdata.na_count }}{% endif %})</span>
             </div>
             {% endif %}
         </div>

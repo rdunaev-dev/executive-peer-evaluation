@@ -38,7 +38,7 @@
 
         <!-- Grading scale reference -->
         <div class="bg-white rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-100 p-5 mb-6">
-            <h3 class="text-sm font-bold text-slate-900 mb-3">Шкала оценки (1–5)</h3>
+            <h3 class="text-sm font-bold text-slate-900 mb-3">Шкала оценки (1–5 или Н/И)</h3>
             <div class="grid grid-cols-5 gap-2">
                 {% for score, label in score_labels.items() %}
                 <div class="p-2 rounded-xl border text-center
@@ -61,6 +61,10 @@
                         {% elif score == 5 %}text-emerald-700{% endif %}">{{ label }}</div>
                 </div>
                 {% endfor %}
+            </div>
+            <div class="mt-2 p-2 rounded-xl border border-dashed border-slate-200 bg-slate-50 text-center">
+                <span class="text-sm font-bold text-slate-400">Н/И</span>
+                <span class="text-[10px] text-slate-400 ml-1">— недостаточно точек пересечения для оценки</span>
             </div>
         </div>
 
@@ -85,7 +89,7 @@
                         {{ q.hint }}
                     </div>
 
-                    <!-- Score selection 1-5 -->
+                    <!-- Score selection 1-5 + Н/И -->
                     <div class="mb-4">
                         <div class="text-xs text-slate-500 mb-2 font-medium">Ваша оценка:</div>
                         <div class="grid grid-cols-5 gap-2">
@@ -93,7 +97,8 @@
                             <div>
                                 <input type="radio" name="score_{{ q.code }}" value="{{ score }}"
                                        id="score_{{ q.code }}_{{ score }}"
-                                       class="score-radio hidden peer" required>
+                                       class="score-radio hidden peer"
+                                       onchange="onScoreChange('{{ q.code }}')" required>
                                 <label for="score_{{ q.code }}_{{ score }}"
                                        class="score-{{ score }} cursor-pointer block p-3 border-2 border-slate-200 rounded-xl text-center hover:border-slate-300 transition select-none">
                                     <div class="text-xl font-bold mb-0.5">{{ score }}</div>
@@ -102,12 +107,24 @@
                             </div>
                             {% endfor %}
                         </div>
+                        <!-- Н/И option -->
+                        <div class="mt-2">
+                            <input type="radio" name="score_{{ q.code }}" value="0"
+                                   id="score_{{ q.code }}_0"
+                                   class="score-radio hidden peer"
+                                   onchange="onScoreChange('{{ q.code }}')">
+                            <label for="score_{{ q.code }}_0"
+                                   class="score-0 cursor-pointer flex items-center gap-2 p-2.5 border-2 border-dashed border-slate-200 rounded-xl hover:border-slate-300 transition select-none">
+                                <div class="text-sm font-bold text-slate-400">Н/И</div>
+                                <div class="text-xs text-slate-400">Недостаточно информации — мало точек пересечения для оценки</div>
+                            </label>
+                        </div>
                     </div>
 
                     <!-- Justification with voice input -->
-                    <div class="mt-3">
+                    <div class="mt-3" id="justification_wrap_{{ q.code }}">
                         <div class="flex items-center justify-between mb-2">
-                            <label class="text-xs text-slate-500 font-medium">
+                            <label class="text-xs text-slate-500 font-medium" id="justification_label_{{ q.code }}">
                                 Почему вы так оцениваете? Приведите пример <span class="text-red-400">*</span>
                             </label>
                             <span id="charcount_{{ q.code }}" class="text-xs text-slate-400">0 / мин. 30</span>
@@ -207,6 +224,24 @@
 const allCodes = {{ all_questions | map(attribute='code') | list | tojson }};
 const blocksMap = {{ blocks | tojson }};
 
+function isNA(code) {
+    const checked = document.querySelector('input[name="score_' + code + '"]:checked');
+    return checked && checked.value === '0';
+}
+
+function onScoreChange(code) {
+    const wrap = document.getElementById('justification_wrap_' + code);
+    const label = document.getElementById('justification_label_' + code);
+    if (isNA(code)) {
+        wrap.style.opacity = '0.4';
+        label.innerHTML = 'Комментарий <span class="text-slate-400">(необязательно)</span>';
+    } else {
+        wrap.style.opacity = '1';
+        label.innerHTML = 'Почему вы так оцениваете? Приведите пример <span class="text-red-400">*</span>';
+    }
+    updateScorePreview();
+}
+
 function updateScorePreview() {
     let criterionSums = {};
     let criterionCounts = {};
@@ -216,25 +251,33 @@ function updateScorePreview() {
         for (const q of block.questions) {
             const checked = document.querySelector('input[name="score_' + q.code + '"]:checked');
             if (checked) {
-                criterionSums[block.code] += parseInt(checked.value);
-                criterionCounts[block.code]++;
+                const val = parseInt(checked.value);
+                if (val > 0) {
+                    criterionSums[block.code] += val;
+                    criterionCounts[block.code]++;
+                }
             }
         }
     }
     let personScore = 0;
-    let allComplete = true;
+    let allAnswered = true;
+    let hasScored = false;
     for (const block of blocksMap) {
-        if (criterionCounts[block.code] === block.questions.length) {
-            personScore += criterionSums[block.code] / block.questions.length;
-        } else {
-            allComplete = false;
+        let answered = true;
+        for (const q of block.questions) {
+            if (!document.querySelector('input[name="score_' + q.code + '"]:checked')) answered = false;
+        }
+        if (!answered) { allAnswered = false; continue; }
+        if (criterionCounts[block.code] > 0) {
+            personScore += criterionSums[block.code] / criterionCounts[block.code];
+            hasScored = true;
         }
     }
     const preview = document.getElementById('scorePreview');
     const gradeEl = document.getElementById('gradePreview');
     personScore = Math.round(personScore * 10) / 10;
 
-    if (allComplete) {
+    if (allAnswered && hasScored) {
         preview.textContent = personScore;
         let grade, cls;
         if (personScore >= 16) { grade = 'Head A'; cls = 'bg-emerald-100 text-emerald-700'; }
@@ -243,15 +286,11 @@ function updateScorePreview() {
         gradeEl.textContent = grade;
         gradeEl.className = 'text-sm font-bold px-3 py-1 rounded-lg ' + cls;
     } else {
-        preview.textContent = personScore > 0 ? personScore.toFixed(1) + '...' : '—';
+        preview.textContent = hasScored ? personScore.toFixed(1) + '...' : '—';
         gradeEl.textContent = '—';
         gradeEl.className = 'text-sm font-bold px-3 py-1 rounded-lg bg-slate-100 text-slate-400';
     }
 }
-
-document.addEventListener('change', function(e) {
-    if (e.target.classList.contains('score-radio')) updateScorePreview();
-});
 
 function updateCharCount(code) {
     const text = document.getElementById('text_' + code);
@@ -311,15 +350,28 @@ function toggleVoice(code) {
 function validateForm() {
     let errors = [];
     for (const code of allCodes) {
-        if (!document.querySelector('input[name="score_' + code + '"]:checked'))
-            errors.push(code + ': выберите оценку');
-        const ta = document.getElementById('text_' + code);
-        if (!ta || ta.value.trim().length < 30)
-            errors.push(code + ': обоснование минимум 30 символов');
+        const checked = document.querySelector('input[name="score_' + code + '"]:checked');
+        if (!checked) {
+            errors.push(code + ': выберите оценку или Н/И');
+            continue;
+        }
+        if (checked.value !== '0') {
+            const ta = document.getElementById('text_' + code);
+            if (!ta || ta.value.trim().length < 30)
+                errors.push(code + ': обоснование минимум 30 символов');
+        }
     }
     if (errors.length > 0) {
         alert('Исправьте:\n\n' + errors.join('\n'));
-        const first = allCodes.find(c => !document.querySelector('input[name="score_' + c + '"]:checked') || document.getElementById('text_' + c).value.trim().length < 30);
+        const first = allCodes.find(c => {
+            const ch = document.querySelector('input[name="score_' + c + '"]:checked');
+            if (!ch) return true;
+            if (ch.value !== '0') {
+                const ta = document.getElementById('text_' + c);
+                return !ta || ta.value.trim().length < 30;
+            }
+            return false;
+        });
         if (first) document.getElementById('question-' + first).scrollIntoView({ behavior: 'smooth', block: 'center' });
         return false;
     }

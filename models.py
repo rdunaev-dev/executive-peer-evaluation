@@ -182,6 +182,9 @@ SCORE_LABELS = {
     5: "Значительно выше ожиданий",
 }
 
+NA_SCORE = 0
+NA_LABEL = "Н/И — недостаточно информации"
+
 GRADE_LABELS = {
     "A": {"name": "Head A", "range": "16–20", "color": "emerald", "description": "Сильный драйвер: системно перевыполняет ожидания, создаёт ценность за пределами своей зоны, развивает людей и процессы"},
     "B": {"name": "Head B", "range": "10–15.9", "color": "blue", "description": "Надёжный Head: выполняет ожидания, держит свою область, взаимодействует с другими, команда и процессы работают"},
@@ -568,15 +571,17 @@ def get_report_for_manager(period_id, manager_id):
 
     # Aggregate by question
     from collections import defaultdict
-    question_data = defaultdict(lambda: {"scores": [], "justifications": []})
+    question_data = defaultdict(lambda: {"scores": [], "justifications": [], "na_count": 0})
 
     for r in responses:
         if r['score'] is not None and r['score'] > 0:
             question_data[r['question_code']]["scores"].append(r['score'])
+        elif r['score'] == 0:
+            question_data[r['question_code']]["na_count"] += 1
         if r['justification'] and r['justification'].strip():
             question_data[r['question_code']]["justifications"].append(r['justification'])
 
-    # Calculate aggregated results
+    # Calculate aggregated results (Н/И scores excluded from averages)
     results = {}
     for code, data in question_data.items():
         scores = data['scores']
@@ -586,6 +591,7 @@ def get_report_for_manager(period_id, manager_id):
             "min_score": min(scores) if scores else 0,
             "max_score": max(scores) if scores else 0,
             "count": len(scores),
+            "na_count": data['na_count'],
             "justifications": data['justifications']
         }
 
