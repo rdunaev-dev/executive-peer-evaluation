@@ -3,7 +3,6 @@
 
 {% block body %}
 <div class="min-h-full">
-    <!-- Nav -->
     <nav class="glass border-b border-white/20 sticky top-0 z-50">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
@@ -29,8 +28,8 @@
                 </svg>
             </div>
             <div>
-                <div class="text-sm font-semibold text-violet-900">Голосовой ввод доступен 🎤</div>
-                <div class="text-xs text-violet-700 mt-0.5">Нажмите на иконку микрофона рядом с текстовым полем, чтобы наговорить ответ. Работает в Chrome и Edge.</div>
+                <div class="text-sm font-semibold text-violet-900">Голосовой ввод доступен</div>
+                <div class="text-xs text-violet-700 mt-0.5">Нажмите на микрофон рядом с текстовым полем, чтобы наговорить ответ. Работает в Chrome и Edge.</div>
             </div>
             <button onclick="this.parentElement.remove()" class="text-violet-400 hover:text-violet-600 ml-auto flex-shrink-0">
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -39,29 +38,34 @@
 
         <!-- Grading scale reference -->
         <div class="bg-white rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-100 p-5 mb-6">
-            <h3 class="text-sm font-bold text-slate-900 mb-3">Шкала оценки (1–3 по каждому фактору)</h3>
-            <div class="grid grid-cols-3 gap-3">
-                <div class="p-3 bg-red-50 rounded-xl border border-red-100 text-center">
-                    <div class="text-2xl font-bold text-red-600">1</div>
-                    <div class="text-xs text-red-700 mt-1 font-medium">Ниже ожиданий</div>
-                    <div class="text-xs text-red-500 mt-0.5">нестабильно</div>
+            <h3 class="text-sm font-bold text-slate-900 mb-3">Шкала оценки (1–5)</h3>
+            <div class="grid grid-cols-5 gap-2">
+                {% for score, label in score_labels.items() %}
+                <div class="p-2 rounded-xl border text-center
+                    {% if score == 1 %}bg-red-50 border-red-100
+                    {% elif score == 2 %}bg-orange-50 border-orange-100
+                    {% elif score == 3 %}bg-blue-50 border-blue-100
+                    {% elif score == 4 %}bg-cyan-50 border-cyan-100
+                    {% elif score == 5 %}bg-emerald-50 border-emerald-100{% endif %}">
+                    <div class="text-xl font-bold
+                        {% if score == 1 %}text-red-600
+                        {% elif score == 2 %}text-orange-600
+                        {% elif score == 3 %}text-blue-600
+                        {% elif score == 4 %}text-cyan-600
+                        {% elif score == 5 %}text-emerald-600{% endif %}">{{ score }}</div>
+                    <div class="text-[10px] mt-1 font-medium leading-tight
+                        {% if score == 1 %}text-red-700
+                        {% elif score == 2 %}text-orange-700
+                        {% elif score == 3 %}text-blue-700
+                        {% elif score == 4 %}text-cyan-700
+                        {% elif score == 5 %}text-emerald-700{% endif %}">{{ label }}</div>
                 </div>
-                <div class="p-3 bg-blue-50 rounded-xl border border-blue-100 text-center">
-                    <div class="text-2xl font-bold text-blue-600">2</div>
-                    <div class="text-xs text-blue-700 mt-1 font-medium">Соответствует</div>
-                    <div class="text-xs text-blue-500 mt-0.5">ожиданиям для Head</div>
-                </div>
-                <div class="p-3 bg-emerald-50 rounded-xl border border-emerald-100 text-center">
-                    <div class="text-2xl font-bold text-emerald-600">3</div>
-                    <div class="text-xs text-emerald-700 mt-1 font-medium">Выше ожиданий</div>
-                    <div class="text-xs text-emerald-500 mt-0.5">драйвер</div>
-                </div>
+                {% endfor %}
             </div>
         </div>
 
         <form id="evalForm" method="POST" action="{{ url_for('evaluate_save', token=token, evaluation_id=evaluation.id) }}">
             {% for block in blocks %}
-            <!-- Block {{ block.id }} -->
             <div class="bg-white rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-100 overflow-hidden mb-6 fade-in">
                 <div class="p-5 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-brand-50/30">
                     <div class="flex items-center gap-3">
@@ -75,28 +79,25 @@
                 </div>
 
                 {% for q in block.questions %}
-                <div class="p-5" id="question-{{ q.code }}">
-                    <!-- Hint -->
+                <div class="p-5 {% if not loop.last %}border-b border-slate-50{% endif %}" id="question-{{ q.code }}">
+                    <div class="text-sm font-semibold text-slate-800 mb-2">{{ loop.index }}. {{ q.text }}</div>
                     <div class="text-sm text-slate-600 bg-slate-50 rounded-lg p-3 mb-4 leading-relaxed">
-                        💡 {{ q.hint }}
+                        {{ q.hint }}
                     </div>
 
-                    <!-- Score selection 1-3 -->
+                    <!-- Score selection 1-5 -->
                     <div class="mb-4">
-                        <div class="text-xs text-slate-500 mb-3 font-medium">Ваша оценка:</div>
-                        <div class="grid grid-cols-3 gap-3">
-                            {% for score in [1, 2, 3] %}
+                        <div class="text-xs text-slate-500 mb-2 font-medium">Ваша оценка:</div>
+                        <div class="grid grid-cols-5 gap-2">
+                            {% for score in [1, 2, 3, 4, 5] %}
                             <div>
                                 <input type="radio" name="score_{{ q.code }}" value="{{ score }}"
                                        id="score_{{ q.code }}_{{ score }}"
-                                       class="score-radio hidden peer"
-                                       required>
+                                       class="score-radio hidden peer" required>
                                 <label for="score_{{ q.code }}_{{ score }}"
-                                       class="score-{{ score }} cursor-pointer block p-4 border-2 border-slate-200 rounded-xl text-center hover:border-slate-300 transition select-none">
-                                    <div class="text-2xl font-bold mb-1">{{ score }}</div>
-                                    <div class="text-xs font-medium">
-                                        {% if score == 1 %}Ниже ожиданий{% elif score == 2 %}Соответствует{% elif score == 3 %}Выше ожиданий{% endif %}
-                                    </div>
+                                       class="score-{{ score }} cursor-pointer block p-3 border-2 border-slate-200 rounded-xl text-center hover:border-slate-300 transition select-none">
+                                    <div class="text-xl font-bold mb-0.5">{{ score }}</div>
+                                    <div class="text-[10px] font-medium leading-tight">{{ score_labels[score]|truncate(20, True) }}</div>
                                 </label>
                             </div>
                             {% endfor %}
@@ -104,22 +105,21 @@
                     </div>
 
                     <!-- Justification with voice input -->
-                    <div class="mt-4">
+                    <div class="mt-3">
                         <div class="flex items-center justify-between mb-2">
                             <label class="text-xs text-slate-500 font-medium">
-                                Обоснование: почему вы поставили эту оценку? <span class="text-red-400">*</span>
+                                Почему вы так оцениваете? Приведите пример <span class="text-red-400">*</span>
                             </label>
-                            <span id="charcount_{{ q.code }}" class="text-xs text-slate-400">0 / мин. 50</span>
+                            <span id="charcount_{{ q.code }}" class="text-xs text-slate-400">0 / мин. 30</span>
                         </div>
                         <div class="relative">
                             <textarea name="justification_{{ q.code }}"
                                       id="text_{{ q.code }}"
-                                      rows="4"
-                                      placeholder="Опишите конкретные примеры и ситуации за оцениваемый период. Что этот руководитель делал хорошо? Где есть зоны роста? Чем конкретнее — тем ценнее обратная связь."
+                                      rows="3"
+                                      placeholder="Опишите конкретную ситуацию или пример за оцениваемый период..."
                                       class="w-full px-4 py-3 pr-14 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition resize-none leading-relaxed"
                                       oninput="updateCharCount('{{ q.code }}')"
                                       ></textarea>
-                            <!-- Voice button -->
                             <button type="button"
                                     onclick="toggleVoice('{{ q.code }}')"
                                     id="voicebtn_{{ q.code }}"
@@ -129,7 +129,6 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
                                 </svg>
                             </button>
-                            <!-- Recording indicator -->
                             <div id="recording_{{ q.code }}" class="hidden absolute right-14 top-3 flex items-center gap-1.5">
                                 <div class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
                                 <span class="text-xs text-red-500 font-medium">Запись...</span>
@@ -147,13 +146,13 @@
                 <div class="flex items-center gap-6">
                     <div class="flex items-center gap-2 text-sm text-slate-600">
                         <span class="font-mono font-bold" id="scorePreview">—</span>
-                        <span>из 12</span>
+                        <span>из {{ max_person_score }}</span>
                     </div>
                     <div id="gradePreview" class="text-sm font-bold px-3 py-1 rounded-lg bg-slate-100 text-slate-400">
                         —
                     </div>
                     <div class="text-xs text-slate-400">
-                        Head C = 4–6 · Head B = 7–9 · Head A = 10–12
+                        Head C = 4–9.9 · Head B = 10–15.9 · Head A = 16–20
                     </div>
                 </div>
             </div>
@@ -167,16 +166,12 @@
                     </h2>
                 </div>
                 <div class="p-5">
-                    <div class="flex items-center justify-between mb-2">
-                        <label class="text-sm text-slate-700 font-medium">Общее обоснование оценки и совет {{ evaluation.evaluatee_name }} на следующий период</label>
-                    </div>
+                    <label class="text-sm text-slate-700 font-medium mb-2 block">Что бы вы посоветовали {{ evaluation.evaluatee_name }} на следующий период?</label>
                     <div class="relative">
                         <textarea name="advice" id="text_advice" rows="4"
-                                  placeholder="Опишите общее впечатление о работе этого руководителя за период. Что стоит продолжать? Что изменить? Ваш совет на будущее."
+                                  placeholder="Общее впечатление, что продолжать, что изменить..."
                                   class="w-full px-4 py-3 pr-14 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition resize-none leading-relaxed"></textarea>
-                        <button type="button"
-                                onclick="toggleVoice('advice')"
-                                id="voicebtn_advice"
+                        <button type="button" onclick="toggleVoice('advice')" id="voicebtn_advice"
                                 class="voice-btn absolute right-3 top-3 w-9 h-9 rounded-lg bg-slate-100 hover:bg-violet-100 text-slate-400 hover:text-violet-600 flex items-center justify-center transition"
                                 title="Наговорить ответ">
                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -199,7 +194,7 @@
                 <button type="submit" id="submitBtn"
                         class="px-8 py-3 bg-gradient-to-r from-brand-600 to-indigo-600 text-white rounded-xl text-sm font-semibold hover:from-brand-700 hover:to-indigo-700 transition shadow-lg shadow-brand-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
                         onclick="return validateForm()">
-                    Сохранить оценку ✓
+                    Сохранить оценку
                 </button>
             </div>
         </form>
@@ -209,32 +204,46 @@
 
 {% block scripts %}
 <script>
-const factorCodes = {{ all_questions | map(attribute='code') | list | tojson }};
+const allCodes = {{ all_questions | map(attribute='code') | list | tojson }};
+const blocksMap = {{ blocks | tojson }};
 
 function updateScorePreview() {
-    let total = 0;
-    let allSelected = true;
-    for (const code of factorCodes) {
-        const checked = document.querySelector('input[name="score_' + code + '"]:checked');
-        if (checked) {
-            total += parseInt(checked.value);
+    let criterionSums = {};
+    let criterionCounts = {};
+    for (const block of blocksMap) {
+        criterionSums[block.code] = 0;
+        criterionCounts[block.code] = 0;
+        for (const q of block.questions) {
+            const checked = document.querySelector('input[name="score_' + q.code + '"]:checked');
+            if (checked) {
+                criterionSums[block.code] += parseInt(checked.value);
+                criterionCounts[block.code]++;
+            }
+        }
+    }
+    let personScore = 0;
+    let allComplete = true;
+    for (const block of blocksMap) {
+        if (criterionCounts[block.code] === block.questions.length) {
+            personScore += criterionSums[block.code] / block.questions.length;
         } else {
-            allSelected = false;
+            allComplete = false;
         }
     }
     const preview = document.getElementById('scorePreview');
     const gradeEl = document.getElementById('gradePreview');
+    personScore = Math.round(personScore * 10) / 10;
 
-    if (allSelected) {
-        preview.textContent = total;
+    if (allComplete) {
+        preview.textContent = personScore;
         let grade, cls;
-        if (total >= 10) { grade = 'Head A'; cls = 'bg-emerald-100 text-emerald-700'; }
-        else if (total >= 7) { grade = 'Head B'; cls = 'bg-blue-100 text-blue-700'; }
+        if (personScore >= 16) { grade = 'Head A'; cls = 'bg-emerald-100 text-emerald-700'; }
+        else if (personScore >= 10) { grade = 'Head B'; cls = 'bg-blue-100 text-blue-700'; }
         else { grade = 'Head C'; cls = 'bg-amber-100 text-amber-700'; }
         gradeEl.textContent = grade;
         gradeEl.className = 'text-sm font-bold px-3 py-1 rounded-lg ' + cls;
     } else {
-        preview.textContent = total > 0 ? total + '+' : '—';
+        preview.textContent = personScore > 0 ? personScore.toFixed(1) + '...' : '—';
         gradeEl.textContent = '—';
         gradeEl.className = 'text-sm font-bold px-3 py-1 rounded-lg bg-slate-100 text-slate-400';
     }
@@ -249,14 +258,11 @@ function updateCharCount(code) {
     const counter = document.getElementById('charcount_' + code);
     if (text && counter) {
         const len = text.value.length;
-        counter.textContent = len + ' / мин. 50';
-        counter.className = 'text-xs ' + (len >= 50 ? 'text-emerald-500' : 'text-red-400');
+        counter.textContent = len + ' / мин. 30';
+        counter.className = 'text-xs ' + (len >= 30 ? 'text-emerald-500' : 'text-red-400');
     }
 }
 
-// ─────────────────────────────────────────────
-// Voice Input (Web Speech API)
-// ─────────────────────────────────────────────
 let activeRecognition = null;
 let activeField = null;
 
@@ -264,115 +270,66 @@ function toggleVoice(code) {
     const btn = document.getElementById('voicebtn_' + code);
     const indicator = document.getElementById('recording_' + code);
     const textarea = document.getElementById('text_' + code);
-
-    if (activeField === code && activeRecognition) {
-        activeRecognition.stop();
-        return;
-    }
-    if (activeRecognition) {
-        activeRecognition.stop();
-    }
-
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-        alert('Голосовой ввод не поддерживается вашим браузером. Используйте Chrome или Edge.');
-        return;
-    }
-
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'ru-RU';
-    recognition.interimResults = true;
-    recognition.continuous = true;
-    recognition.maxAlternatives = 1;
-
+    if (activeField === code && activeRecognition) { activeRecognition.stop(); return; }
+    if (activeRecognition) { activeRecognition.stop(); }
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { alert('Голосовой ввод не поддерживается. Используйте Chrome или Edge.'); return; }
+    const recognition = new SR();
+    recognition.lang = 'ru-RU'; recognition.interimResults = true; recognition.continuous = true;
     let finalTranscript = textarea.value;
-    if (finalTranscript && !finalTranscript.endsWith(' ') && !finalTranscript.endsWith('\n')) {
-        finalTranscript += ' ';
-    }
-
+    if (finalTranscript && !finalTranscript.endsWith(' ') && !finalTranscript.endsWith('\n')) finalTranscript += ' ';
     recognition.onstart = function() {
-        activeField = code;
-        activeRecognition = recognition;
+        activeField = code; activeRecognition = recognition;
         btn.classList.add('recording', 'bg-red-100', 'text-red-600');
         btn.classList.remove('bg-slate-100', 'text-slate-400');
-        indicator.classList.remove('hidden');
-        textarea.focus();
+        indicator.classList.remove('hidden'); textarea.focus();
     };
-
     recognition.onresult = function(event) {
-        let interimTranscript = '';
+        let interim = '';
         for (let i = event.resultIndex; i < event.results.length; i++) {
-            const transcript = event.results[i][0].transcript;
-            if (event.results[i].isFinal) {
-                finalTranscript += transcript;
-            } else {
-                interimTranscript += transcript;
-            }
+            if (event.results[i].isFinal) finalTranscript += event.results[i][0].transcript;
+            else interim += event.results[i][0].transcript;
         }
-        textarea.value = finalTranscript + interimTranscript;
+        textarea.value = finalTranscript + interim;
         updateCharCount(code);
     };
-
     recognition.onend = function() {
         btn.classList.remove('recording', 'bg-red-100', 'text-red-600');
         btn.classList.add('bg-slate-100', 'text-slate-400');
-        indicator.classList.add('hidden');
-        textarea.value = finalTranscript;
-        updateCharCount(code);
+        indicator.classList.add('hidden'); textarea.value = finalTranscript; updateCharCount(code);
         if (activeField === code) { activeField = null; activeRecognition = null; }
     };
-
     recognition.onerror = function(event) {
         btn.classList.remove('recording', 'bg-red-100', 'text-red-600');
         btn.classList.add('bg-slate-100', 'text-slate-400');
-        indicator.classList.add('hidden');
-        activeField = null; activeRecognition = null;
-        if (event.error === 'not-allowed') {
-            alert('Доступ к микрофону запрещён. Разрешите доступ в настройках браузера.');
-        }
+        indicator.classList.add('hidden'); activeField = null; activeRecognition = null;
+        if (event.error === 'not-allowed') alert('Разрешите доступ к микрофону в настройках браузера.');
     };
-
     recognition.start();
 }
 
-// ─────────────────────────────────────────────
-// Form Validation
-// ─────────────────────────────────────────────
 function validateForm() {
     let errors = [];
-    for (const code of factorCodes) {
-        const checked = document.querySelector('input[name="score_' + code + '"]:checked');
-        if (!checked) {
-            errors.push('Фактор ' + code + ': выберите оценку');
-            continue;
-        }
-        const textarea = document.getElementById('text_' + code);
-        if (!textarea || textarea.value.trim().length < 50) {
-            errors.push('Фактор ' + code + ': обоснование должно содержать минимум 50 символов (сейчас: ' + (textarea ? textarea.value.trim().length : 0) + ')');
-        }
+    for (const code of allCodes) {
+        if (!document.querySelector('input[name="score_' + code + '"]:checked'))
+            errors.push(code + ': выберите оценку');
+        const ta = document.getElementById('text_' + code);
+        if (!ta || ta.value.trim().length < 30)
+            errors.push(code + ': обоснование минимум 30 символов');
     }
     if (errors.length > 0) {
-        alert('Пожалуйста, исправьте:\n\n' + errors.join('\n'));
-        const firstCode = factorCodes.find(c => {
-            const checked = document.querySelector('input[name="score_' + c + '"]:checked');
-            const ta = document.getElementById('text_' + c);
-            return !checked || !ta || ta.value.trim().length < 50;
-        });
-        if (firstCode) {
-            document.getElementById('question-' + firstCode).scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
+        alert('Исправьте:\n\n' + errors.join('\n'));
+        const first = allCodes.find(c => !document.querySelector('input[name="score_' + c + '"]:checked') || document.getElementById('text_' + c).value.trim().length < 30);
+        if (first) document.getElementById('question-' + first).scrollIntoView({ behavior: 'smooth', block: 'center' });
         return false;
     }
     return true;
 }
 
-// Check voice support on load
 document.addEventListener('DOMContentLoaded', function() {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-        const notice = document.getElementById('voiceNotice');
-        notice.className = 'bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 flex items-center gap-3';
-        notice.innerHTML = '<div class="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0"><svg class="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg></div><div><div class="text-sm font-semibold text-amber-900">Голосовой ввод недоступен</div><div class="text-xs text-amber-700 mt-0.5">Используйте Chrome или Edge для голосового ввода. Текст можно вводить вручную.</div></div>';
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+        document.getElementById('voiceNotice').innerHTML = '<div class="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0"><svg class="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg></div><div><div class="text-sm font-semibold text-amber-900">Голосовой ввод недоступен</div><div class="text-xs text-amber-700 mt-0.5">Используйте Chrome или Edge.</div></div>';
         document.querySelectorAll('.voice-btn').forEach(btn => btn.style.display = 'none');
     }
 });

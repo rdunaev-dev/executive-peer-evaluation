@@ -16,7 +16,7 @@ from flask import (
 import os
 from datetime import datetime, date
 from models import (
-    init_db, get_db, BLOCKS, ALL_QUESTIONS, SCORE_LABELS, MAX_SCORE, GRADE_LABELS,
+    init_db, get_db, BLOCKS, ALL_QUESTIONS, SCORE_LABELS, MAX_SCORE, GRADE_LABELS, MAX_PERSON_SCORE, NUM_CRITERIA,
     add_manager, get_managers, get_manager, update_manager, delete_manager,
     add_period, get_periods, get_period, activate_period, deactivate_period,
     get_tokens_for_period, get_token_data, get_evaluations_for_token,
@@ -45,6 +45,8 @@ def inject_globals():
         "all_questions": ALL_QUESTIONS,
         "score_labels": SCORE_LABELS,
         "max_score": MAX_SCORE,
+        "max_person_score": MAX_PERSON_SCORE,
+        "num_criteria": NUM_CRITERIA,
         "grade_labels": GRADE_LABELS,
         "now": datetime.now(),
     }
