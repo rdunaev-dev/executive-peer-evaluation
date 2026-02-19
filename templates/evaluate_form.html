@@ -157,23 +157,6 @@
             </div>
             {% endfor %}
 
-            <!-- Summary score preview -->
-            <div class="bg-white rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-100 p-5 mb-6">
-                <h3 class="text-sm font-bold text-slate-900 mb-3">Итоговый PersonScore (рассчитывается автоматически)</h3>
-                <div class="flex items-center gap-6">
-                    <div class="flex items-center gap-2 text-sm text-slate-600">
-                        <span class="font-mono font-bold" id="scorePreview">—</span>
-                        <span>из {{ max_person_score }}</span>
-                    </div>
-                    <div id="gradePreview" class="text-sm font-bold px-3 py-1 rounded-lg bg-slate-100 text-slate-400">
-                        —
-                    </div>
-                    <div class="text-xs text-slate-400">
-                        Head C = 4–9.9 · Head B = 10–15.9 · Head A = 16–20
-                    </div>
-                </div>
-            </div>
-
             <!-- Final advice -->
             <div class="bg-white rounded-2xl shadow-lg shadow-slate-200/50 border border-slate-100 overflow-hidden mb-6">
                 <div class="p-5 border-b border-slate-100 bg-gradient-to-r from-amber-50 to-orange-50">
@@ -242,55 +225,7 @@ function onScoreChange(code) {
     updateScorePreview();
 }
 
-function updateScorePreview() {
-    let criterionSums = {};
-    let criterionCounts = {};
-    for (const block of blocksMap) {
-        criterionSums[block.code] = 0;
-        criterionCounts[block.code] = 0;
-        for (const q of block.questions) {
-            const checked = document.querySelector('input[name="score_' + q.code + '"]:checked');
-            if (checked) {
-                const val = parseInt(checked.value);
-                if (val > 0) {
-                    criterionSums[block.code] += val;
-                    criterionCounts[block.code]++;
-                }
-            }
-        }
-    }
-    let personScore = 0;
-    let allAnswered = true;
-    let hasScored = false;
-    for (const block of blocksMap) {
-        let answered = true;
-        for (const q of block.questions) {
-            if (!document.querySelector('input[name="score_' + q.code + '"]:checked')) answered = false;
-        }
-        if (!answered) { allAnswered = false; continue; }
-        if (criterionCounts[block.code] > 0) {
-            personScore += criterionSums[block.code] / criterionCounts[block.code];
-            hasScored = true;
-        }
-    }
-    const preview = document.getElementById('scorePreview');
-    const gradeEl = document.getElementById('gradePreview');
-    personScore = Math.round(personScore * 10) / 10;
-
-    if (allAnswered && hasScored) {
-        preview.textContent = personScore;
-        let grade, cls;
-        if (personScore >= 16) { grade = 'Head A'; cls = 'bg-emerald-100 text-emerald-700'; }
-        else if (personScore >= 10) { grade = 'Head B'; cls = 'bg-blue-100 text-blue-700'; }
-        else { grade = 'Head C'; cls = 'bg-amber-100 text-amber-700'; }
-        gradeEl.textContent = grade;
-        gradeEl.className = 'text-sm font-bold px-3 py-1 rounded-lg ' + cls;
-    } else {
-        preview.textContent = hasScored ? personScore.toFixed(1) + '...' : '—';
-        gradeEl.textContent = '—';
-        gradeEl.className = 'text-sm font-bold px-3 py-1 rounded-lg bg-slate-100 text-slate-400';
-    }
-}
+function updateScorePreview() {}
 
 function updateCharCount(code) {
     const text = document.getElementById('text_' + code);
